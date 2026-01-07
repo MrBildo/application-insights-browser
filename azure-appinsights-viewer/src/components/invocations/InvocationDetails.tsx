@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
+  Textarea,
   Text,
   makeStyles,
 } from '@fluentui/react-components'
@@ -30,11 +31,30 @@ const useStyles = makeStyles({
   message: { maxWidth: '520px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
   selectedRow: { backgroundColor: '#eff6fc' },
   clickableRow: { cursor: 'pointer', ':hover': { backgroundColor: '#f3f2f1' } },
+  dialogSurface: {
+    resize: 'both',
+    overflow: 'auto',
+    minWidth: '640px',
+    minHeight: '420px',
+    maxWidth: '92vw',
+    maxHeight: '92vh',
+    backgroundColor: '#111111',
+    color: '#f5f5f5',
+  },
+  fullMessageArea: {
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    backgroundColor: '#0f0f10',
+    color: '#f5f5f5',
+    border: '1px solid #2b2b2d',
+  },
+  darkLabel: { color: '#c8c6c4' },
+  darkText: { color: '#f5f5f5' },
 })
 
 type DetailRow = {
   timestamp?: unknown
   itemType?: unknown
+  loglevel?: unknown
   message?: unknown
   severityLevel?: unknown
   resultCode?: unknown
@@ -128,7 +148,7 @@ export function InvocationDetails(props: {
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Timestamp</TableHeaderCell>
-              <TableHeaderCell>Type</TableHeaderCell>
+              <TableHeaderCell>Log level</TableHeaderCell>
               <TableHeaderCell>Message</TableHeaderCell>
             </TableRow>
           </TableHeader>
@@ -142,7 +162,7 @@ export function InvocationDetails(props: {
                 <TableCell>
                   {r.timestamp ? new Date(String(r.timestamp)).toLocaleString() : ''}
                 </TableCell>
-                <TableCell>{toStringSafe(r.itemType)}</TableCell>
+                <TableCell>{toStringSafe(r.loglevel)}</TableCell>
                 <TableCell>
                   <div className={styles.message}>{toStringSafe(r.message)}</div>
                 </TableCell>
@@ -153,30 +173,54 @@ export function InvocationDetails(props: {
       </div>
 
       <Dialog open={selectedIdx !== null} onOpenChange={(_, data) => (!data.open ? setSelectedIdx(null) : null)}>
-        <DialogSurface>
+        <DialogSurface className={styles.dialogSurface}>
           <DialogBody>
             <DialogTitle>{props.operationId}</DialogTitle>
             <DialogContent>
               <div style={{ display: 'grid', gap: 10, marginTop: 4 }}>
                 <div>
-                  <Text size={200} style={{ color: '#605e5c' }} block>
+                  <Text size={200} className={styles.darkLabel} block>
                     Time
                   </Text>
-                  <Text block>{selectedRow?.timestamp ? new Date(String(selectedRow.timestamp)).toLocaleString() : ''}</Text>
+                  <Text block className={styles.darkText}>{selectedRow?.timestamp ? new Date(String(selectedRow.timestamp)).toLocaleString() : ''}</Text>
                 </div>
                 <div>
-                  <Text size={200} style={{ color: '#605e5c' }} block>
+                  <Text size={200} className={styles.darkLabel} block>
                     Result
                   </Text>
-                  <Text block>
+                  <Text block className={styles.darkText}>
                     {props.invocation ? (props.invocation.success ? 'Success' : 'Failure') : ''}
                   </Text>
                 </div>
                 <div>
-                  <Text size={200} style={{ color: '#605e5c' }} block>
+                  <Text size={200} className={styles.darkLabel} block>
                     Duration (ms)
                   </Text>
-                  <Text block>{approxDeltaMs === null ? '' : Math.round(approxDeltaMs)}</Text>
+                  <Text block className={styles.darkText}>{approxDeltaMs === null ? '' : Math.round(approxDeltaMs)}</Text>
+                </div>
+                <div>
+                  <Text size={200} className={styles.darkLabel} block>
+                    Log level
+                  </Text>
+                  <Text block className={styles.darkText}>{toStringSafe(selectedRow?.loglevel)}</Text>
+                </div>
+                <div>
+                  <Text size={200} className={styles.darkLabel} block>
+                    Item type
+                  </Text>
+                  <Text block className={styles.darkText}>{toStringSafe(selectedRow?.itemType)}</Text>
+                </div>
+                <div>
+                  <Text size={200} className={styles.darkLabel} block>
+                    Full message
+                  </Text>
+                  <Textarea
+                    readOnly
+                    resize="vertical"
+                    value={toStringSafe(selectedRow?.message)}
+                    className={styles.fullMessageArea}
+                    style={{ width: '100%', minHeight: 180 }}
+                  />
                 </div>
               </div>
             </DialogContent>

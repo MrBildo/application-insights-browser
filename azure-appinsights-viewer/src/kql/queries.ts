@@ -68,9 +68,10 @@ union isfuzzy=true
   (dependencies ${filter})
 | where operation_Id == "${op}"
 | extend itemType = tostring(itemType)
+| extend loglevel = tostring(customDimensions.['LogLevel'])
 | extend message = coalesce(tostring(message), tostring(outerMessage), tostring(name))
 | where itemType != "request"
-| project timestamp, itemType, message, severityLevel, resultCode, success, duration, type, cloud_RoleName
+| project timestamp, itemType, loglevel, message, severityLevel, resultCode, success, duration, type, cloud_RoleName
 | order by timestamp asc
 `.trim()
 }
@@ -85,8 +86,10 @@ export function searchInvocationsByTraceKeywordQuery(args: {
 
   return `
 let hits =
-  traces
-  ${filter}
+  union isfuzzy=true
+    (traces ${filter}),
+    (exceptions ${filter})
+  | extend message = coalesce(tostring(message), tostring(outerMessage), tostring(name))
   | where message has "${kw}"
   | summarize matchCount=count() by operation_Id;
 hits

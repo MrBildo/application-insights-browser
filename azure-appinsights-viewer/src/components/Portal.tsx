@@ -69,10 +69,12 @@ const useStyles = makeStyles({
     marginBottom: '10px',
   },
   twoCol: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    display: 'flex',
     gap: '8px',
+    alignItems: 'center',
   },
+  grow: { flex: 1, minWidth: 0 },
+  noShrink: { flexShrink: 0 },
   smallMeta: { color: '#605e5c' },
   rightCardBody: {
     padding: 0,
@@ -447,6 +449,7 @@ export function Portal() {
               </Text>
               <div className={styles.twoCol}>
                 <Dropdown
+                  className={styles.grow}
                   value={
                     timeRange === 'PT24H'
                       ? 'Last 24 hours'
@@ -473,6 +476,7 @@ export function Portal() {
                   <Option value="FOREVER">Forever</Option>
                 </Dropdown>
                 <Switch
+                  className={styles.noShrink}
                   checked={autoRefresh}
                   onChange={(_, data) => setAutoRefresh(data.checked)}
                   label="Auto-refresh"
