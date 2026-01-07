@@ -10,6 +10,7 @@ import {
   Text,
   makeStyles,
 } from '@fluentui/react-components'
+import { CheckmarkCircle20Filled, DismissCircle20Filled } from '@fluentui/react-icons'
 
 export type InvocationRow = {
   timestamp: string
@@ -32,6 +33,9 @@ const useStyles = makeStyles({
     marginBottom: '8px',
   },
   subtle: { color: '#605e5c' },
+  statusCell: { display: 'inline-flex', alignItems: 'center', gap: '6px' },
+  okIcon: { color: '#107c10' },
+  failIcon: { color: '#a4262c' },
   selectedRow: {
     backgroundColor: '#eff6fc',
   },
@@ -94,7 +98,16 @@ export function InvocationsTable(props: {
                   onClick={() => props.onSelect(r.operationId)}
                 >
                   <TableCell>{new Date(r.timestamp).toLocaleString()}</TableCell>
-                  <TableCell>{r.success ? 'Success' : 'Failure'}</TableCell>
+                  <TableCell>
+                    <span className={styles.statusCell}>
+                      {r.success ? (
+                        <CheckmarkCircle20Filled className={styles.okIcon} />
+                      ) : (
+                        <DismissCircle20Filled className={styles.failIcon} />
+                      )}
+                      <span>{r.success ? 'Success' : 'Failure'}</span>
+                    </span>
+                  </TableCell>
                   <TableCell>{r.resultCode}</TableCell>
                   <TableCell>{Math.round(r.durationMs)}</TableCell>
                   <TableCell>
