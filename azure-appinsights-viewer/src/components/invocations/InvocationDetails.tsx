@@ -35,23 +35,36 @@ const useStyles = makeStyles({
   dialogSurface: {
     resize: 'both',
     overflow: 'hidden',
-    minWidth: '640px',
+    width: '800px',
+    height: '560px',
+    minWidth: '520px',
     minHeight: '420px',
-    maxWidth: '92vw',
-    maxHeight: '92vh',
+    maxWidth: 'none',
+    maxHeight: 'none',
     display: 'flex',
+    boxSizing: 'border-box',
   },
   dialogBody: {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
     minHeight: 0,
+    flex: 1,
+    width: '100%',
+    position: 'relative',
   },
   dialogHeader: {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: '12px',
+    paddingRight: '36px',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    zIndex: 1,
   },
   dialogContent: {
     display: 'flex',
@@ -61,10 +74,11 @@ const useStyles = makeStyles({
   },
   dialogLayout: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px', flex: 1, minHeight: 0 },
   metaGrid: { display: 'grid', gap: '10px' },
-  fullMessageSection: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 },
+  fullMessageSection: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%' },
   fullMessageArea: {
     flex: 1,
     minHeight: 0,
+    width: '100%',
     '& textarea': {
       fontFamily:
         'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
@@ -74,6 +88,7 @@ const useStyles = makeStyles({
       lineHeight: '1.35',
       height: '100%',
       minHeight: 0,
+      width: '100%',
     },
   },
 })
@@ -202,14 +217,15 @@ export function InvocationDetails(props: {
       <Dialog open={selectedIdx !== null} onOpenChange={(_, data) => (!data.open ? setSelectedIdx(null) : null)}>
         <DialogSurface className={styles.dialogSurface}>
           <DialogBody className={styles.dialogBody}>
+            <Button
+              appearance="subtle"
+              icon={<Dismiss24Regular />}
+              aria-label="Close"
+              className={styles.closeButton}
+              onClick={() => setSelectedIdx(null)}
+            />
             <div className={styles.dialogHeader}>
               <DialogTitle>{props.operationId}</DialogTitle>
-              <Button
-                appearance="subtle"
-                icon={<Dismiss24Regular />}
-                aria-label="Close"
-                onClick={() => setSelectedIdx(null)}
-              />
             </div>
             <DialogContent className={styles.dialogContent}>
               <div className={styles.dialogLayout}>
