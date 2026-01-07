@@ -1,5 +1,10 @@
 import {
   Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Spinner,
   Table,
   TableBody,
@@ -10,6 +15,7 @@ import {
   Text,
   makeStyles,
 } from '@fluentui/react-components'
+import { useState } from 'react'
 
 const useStyles = makeStyles({
   wrap: { padding: '12px', background: '#ffffff' },
@@ -22,6 +28,8 @@ const useStyles = makeStyles({
   subtle: { color: '#605e5c' },
   tableWrap: { overflow: 'auto', maxHeight: '560px' },
   message: { maxWidth: '520px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
+  selectedRow: { backgroundColor: '#eff6fc' },
+  clickableRow: { cursor: 'pointer', ':hover': { backgroundColor: '#f3f2f1' } },
 })
 
 type DetailRow = {
@@ -36,25 +44,63 @@ type DetailRow = {
   cloud_RoleName?: unknown
 }
 
+type InvocationMeta = {
+  timestamp: string
+  success: boolean
+  durationMs: number
+  operationId: string
+}
+
 function toStringSafe(v: unknown): string {
   if (v === null || v === undefined) return ''
   return String(v)
+}
+
+function toTimeMs(v: unknown): number | null {
+  const s = toStringSafe(v)
+  if (!s) return null
+  const t = Date.parse(s)
+  return Number.isFinite(t) ? t : null
 }
 
 export function InvocationDetails(props: {
   operationId: string | null
   loading: boolean
   rows: DetailRow[]
+  invocation: InvocationMeta | null
   onRefresh: () => void
 }) {
   const styles = useStyles()
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+
+  const filteredRows = props.rows.filter((r) => toStringSafe(r.itemType).toLowerCase() !== 'request')
+
+  const selectedRow = selectedIdx === null ? null : filteredRows[selectedIdx] ?? null
+  const selectedTs = selectedRow ? toTimeMs(selectedRow.timestamp) : null
+  const nextTs =
+    selectedIdx === null || selectedIdx >= filteredRows.length - 1
+      ? null
+      : toTimeMs(filteredRows[selectedIdx + 1]?.timestamp)
+
+  let approxDeltaMs: number | null = null
+  if (selectedIdx !== null && selectedTs !== null) {
+    if (nextTs !== null) {
+      approxDeltaMs = Math.max(0, nextTs - selectedTs)
+    } else if (props.invocation?.timestamp && Number.isFinite(props.invocation.durationMs)) {
+      const invStart = Date.parse(props.invocation.timestamp)
+      if (Number.isFinite(invStart)) {
+        const invEnd = invStart + props.invocation.durationMs
+        approxDeltaMs = Math.max(0, invEnd - selectedTs)
+      }
+    }
+  }
 
   if (!props.operationId) {
     return (
       <div className={styles.wrap}>
         <Text weight="semibold">Invocation details</Text>
         <Text size={200} className={styles.subtle} block style={{ marginTop: 6 }}>
-          Select an invocation on the left to view traces, requests, dependencies, and exceptions.
+          Select an invocation on the left to view traces, dependencies, and exceptions.
         </Text>
       </div>
     )
@@ -87,8 +133,12 @@ export function InvocationDetails(props: {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {props.rows.map((r, idx) => (
-              <TableRow key={idx}>
+            {filteredRows.map((r, idx) => (
+              <TableRow
+                key={idx}
+                className={`${styles.clickableRow} ${selectedIdx === idx ? styles.selectedRow : ''}`}
+                onClick={() => setSelectedIdx(idx)}
+              >
                 <TableCell>
                   {r.timestamp ? new Date(String(r.timestamp)).toLocaleString() : ''}
                 </TableCell>
@@ -101,6 +151,41 @@ export function InvocationDetails(props: {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={selectedIdx !== null} onOpenChange={(_, data) => (!data.open ? setSelectedIdx(null) : null)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{props.operationId}</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'grid', gap: 10, marginTop: 4 }}>
+                <div>
+                  <Text size={200} style={{ color: '#605e5c' }} block>
+                    Time
+                  </Text>
+                  <Text block>{selectedRow?.timestamp ? new Date(String(selectedRow.timestamp)).toLocaleString() : ''}</Text>
+                </div>
+                <div>
+                  <Text size={200} style={{ color: '#605e5c' }} block>
+                    Result
+                  </Text>
+                  <Text block>
+                    {props.invocation ? (props.invocation.success ? 'Success' : 'Failure') : ''}
+                  </Text>
+                </div>
+                <div>
+                  <Text size={200} style={{ color: '#605e5c' }} block>
+                    Duration (ms)
+                  </Text>
+                  <Text block>{approxDeltaMs === null ? '' : Math.round(approxDeltaMs)}</Text>
+                </div>
+              </div>
+            </DialogContent>
+            <Button appearance="primary" style={{ marginTop: 12 }} onClick={() => setSelectedIdx(null)}>
+              Close
+            </Button>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   )
 }
