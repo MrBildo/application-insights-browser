@@ -27,7 +27,17 @@ requests
 | sort by timestamp desc
 | serialize rn = row_number()
 | where rn between (${start} .. ${end})
-| project timestamp, name, success, resultCode, duration, operation_Id, id
+| extend rc = tostring(resultCode)
+| extend rcInt = toint(rc)
+| extend successBool = coalesce(
+    tobool(success),
+    case(
+      rc == "0", true,
+      rcInt between (200 .. 399), true,
+      false
+    )
+  )
+| project timestamp, name, success=successBool, resultCode=rc, duration, operation_Id, id
 | order by timestamp desc
 `.trim()
 }
@@ -71,7 +81,17 @@ hits
 | join kind=inner (
     requests
     | where timestamp >= ${ago}
-    | project timestamp, name, success, resultCode, duration, operation_Id, id
+    | extend rc = tostring(resultCode)
+    | extend rcInt = toint(rc)
+    | extend successBool = coalesce(
+        tobool(success),
+        case(
+          rc == "0", true,
+          rcInt between (200 .. 399), true,
+          false
+        )
+      )
+    | project timestamp, name, success=successBool, resultCode=rc, duration, operation_Id, id
   ) on operation_Id
 | project timestamp, name, success, resultCode, duration, operation_Id, id, matchCount
 | order by timestamp desc
