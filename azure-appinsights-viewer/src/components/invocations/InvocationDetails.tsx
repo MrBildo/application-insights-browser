@@ -88,6 +88,7 @@ const useStyles = makeStyles({
       lineHeight: '1.35',
       height: '100%',
       minHeight: 0,
+      maxHeight: 'none',
       width: '100%',
     },
   },
