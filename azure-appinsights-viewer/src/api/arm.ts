@@ -23,6 +23,29 @@ export type AppInsightsComponent = {
   ingestionMode?: string
 }
 
+type ArmListResponse<T> = { value: T[] }
+
+type ArmTenantRaw = {
+  tenantId: string
+  displayName?: string
+  countryCode?: string
+  domains?: string[]
+}
+
+type ArmSubscriptionRaw = {
+  subscriptionId: string
+  displayName: string
+  state?: string
+  tenantId?: string
+}
+
+type AppInsightsComponentRaw = {
+  id: string
+  name: string
+  location?: string
+  properties?: Record<string, unknown>
+}
+
 const ARM = 'https://management.azure.com'
 
 async function armGet<T>(path: string, accessToken: string): Promise<T> {
@@ -39,7 +62,7 @@ async function armGet<T>(path: string, accessToken: string): Promise<T> {
 }
 
 export async function listTenants(accessToken: string): Promise<ArmTenant[]> {
-  const data = await armGet<{ value: any[] }>('/tenants?api-version=2020-01-01', accessToken)
+  const data = await armGet<ArmListResponse<ArmTenantRaw>>('/tenants?api-version=2020-01-01', accessToken)
   return (data.value ?? []).map((t) => ({
     tenantId: t.tenantId,
     displayName: t.displayName,
@@ -49,7 +72,7 @@ export async function listTenants(accessToken: string): Promise<ArmTenant[]> {
 }
 
 export async function listSubscriptions(accessToken: string): Promise<ArmSubscription[]> {
-  const data = await armGet<{ value: any[] }>('/subscriptions?api-version=2020-01-01', accessToken)
+  const data = await armGet<ArmListResponse<ArmSubscriptionRaw>>('/subscriptions?api-version=2020-01-01', accessToken)
   return (data.value ?? []).map((s) => ({
     subscriptionId: s.subscriptionId,
     displayName: s.displayName,
@@ -72,7 +95,7 @@ export async function listAppInsightsComponents(
   subscriptionId: string,
   accessToken: string,
 ): Promise<AppInsightsComponent[]> {
-  const data = await armGet<{ value: any[] }>(
+  const data = await armGet<ArmListResponse<AppInsightsComponentRaw>>(
     `/subscriptions/${subscriptionId}/providers/Microsoft.Insights/components?api-version=2015-05-01`,
     accessToken,
   )
@@ -87,9 +110,9 @@ export async function listAppInsightsComponents(
       resourceGroup: parseResourceGroupFromId(id),
       subscriptionId: parseSubscriptionFromId(id),
       // ARM sometimes returns AppId vs appId depending on API version.
-      appId: props.AppId ?? props.appId,
-      applicationId: props.ApplicationId ?? props.applicationId,
-      ingestionMode: props.IngestionMode ?? props.ingestionMode,
+      appId: (props['AppId'] ?? props['appId']) as string | undefined,
+      applicationId: (props['ApplicationId'] ?? props['applicationId']) as string | undefined,
+      ingestionMode: (props['IngestionMode'] ?? props['ingestionMode']) as string | undefined,
     } as AppInsightsComponent
   })
 }

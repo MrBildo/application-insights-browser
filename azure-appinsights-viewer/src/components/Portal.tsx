@@ -90,20 +90,15 @@ const useStyles = makeStyles({
     display: 'grid',
     gap: '8px',
   },
-  statusSummary: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '8px',
-  },
-  summaryBox: {
-    border: '1px solid #edebe9',
-    borderRadius: '6px',
-    padding: '8px 10px',
-    background: '#faf9f8',
-  },
 })
 
 type Mode = 'list' | 'search'
+type DetailRow = Record<string, unknown> & { timestamp?: unknown; itemType?: unknown; message?: unknown }
+
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message
+  return String(e)
+}
 
 const LS_KEYS = {
   tenantId: 'aiv.activeTenantId',
@@ -143,13 +138,15 @@ export function Portal() {
   const [invocations, setInvocations] = useState<InvocationRow[]>([])
   const [invocationOffset, setInvocationOffset] = useState<number>(0)
   const [selectedOperationId, setSelectedOperationId] = useState<string | null>(null)
-  const [details, setDetails] = useState<any[]>([])
+  const [details, setDetails] = useState<DetailRow[]>([])
 
   const activeApp = useMemo(() => apps.find((a) => a.id === appInsightsResourceId) ?? null, [apps, appInsightsResourceId])
   const appId = activeApp?.appId ?? null
 
-  const successCount = useMemo(() => invocations.filter((i) => i.success).length, [invocations])
-  const errorCount = useMemo(() => invocations.filter((i) => i.success === false).length, [invocations])
+  const selectedInvocation = useMemo(
+    () => (selectedOperationId ? invocations.find((i) => i.operationId === selectedOperationId) ?? null : null),
+    [invocations, selectedOperationId],
+  )
 
   useEffect(() => {
     if (!tenantId && defaultTenantId) setTenantId(defaultTenantId)
@@ -186,8 +183,8 @@ export function Portal() {
         const preferred = t.find((x) => x.tenantId === defaultTenantId)?.tenantId ?? t[0]?.tenantId ?? ''
         setTenantId(preferred)
       }
-    } catch (e: any) {
-      setError(e?.message ?? String(e))
+    } catch (e: unknown) {
+      setError(errorMessage(e))
     } finally {
       setLoading((s) => ({ ...s, tenants: false }))
     }
@@ -199,12 +196,15 @@ export function Portal() {
     try {
       const token = await getAccessToken({ scopes: ARM_SCOPES, tenantId: forTenantId })
       const s = await listSubscriptions(token)
-      setSubscriptions(s)
-      if (!s.some((x) => x.subscriptionId === subscriptionId)) {
-        setSubscriptionId(s[0]?.subscriptionId ?? '')
+      // Some environments may return subscriptions across tenants; ensure we only show those
+      // that belong to the selected tenant (when the server provides tenantId on the items).
+      const scoped = s.filter((x) => !x.tenantId || x.tenantId === forTenantId)
+      setSubscriptions(scoped)
+      if (!scoped.some((x) => x.subscriptionId === subscriptionId)) {
+        setSubscriptionId(scoped[0]?.subscriptionId ?? '')
       }
-    } catch (e: any) {
-      setError(e?.message ?? String(e))
+    } catch (e: unknown) {
+      setError(errorMessage(e))
     } finally {
       setLoading((s) => ({ ...s, subs: false }))
     }
@@ -221,8 +221,8 @@ export function Portal() {
       if (!a.some((x) => x.id === appInsightsResourceId)) {
         setAppInsightsResourceId(a[0]?.id ?? '')
       }
-    } catch (e: any) {
-      setError(e?.message ?? String(e))
+    } catch (e: unknown) {
+      setError(errorMessage(e))
     } finally {
       setLoading((s) => ({ ...s, apps: false }))
     }
@@ -258,8 +258,8 @@ export function Portal() {
         setSelectedOperationId(null)
         setDetails([])
       }
-    } catch (e: any) {
-      setError(e?.message ?? String(e))
+    } catch (e: unknown) {
+      setError(errorMessage(e))
     } finally {
       setLoading((s) => ({ ...s, inv: false }))
     }
@@ -274,9 +274,9 @@ export function Portal() {
       const kql = invocationDetailsQuery({ operationId, timeRange })
       const resp = await queryAppInsights(appId, kql, token)
       const rows = resp.objectsByTable.PrimaryResult ?? []
-      setDetails(rows)
-    } catch (e: any) {
-      setError(e?.message ?? String(e))
+      setDetails(rows as DetailRow[])
+    } catch (e: unknown) {
+      setError(errorMessage(e))
     } finally {
       setLoading((s) => ({ ...s, details: false }))
     }
@@ -379,7 +379,12 @@ export function Portal() {
                 placeholder={loading.tenants ? 'Loading directories…' : 'Select directory'}
                 value={tenantOptions.find((o) => o.key === tenantId)?.label ?? ''}
                 disabled={loading.tenants || tenantOptions.length === 0}
-                onOptionSelect={(_, data) => setTenantId(String(data.optionValue ?? ''))}
+                onOptionSelect={(_, data) => {
+                  // Avoid intermediate renders using stale downstream selections.
+                  setSubscriptionId('')
+                  setAppInsightsResourceId('')
+                  setTenantId(String(data.optionValue ?? ''))
+                }}
               >
                 {tenantOptions.map((o) => (
                   <Option key={o.key} value={o.key} text={o.label}>
@@ -443,13 +448,29 @@ export function Portal() {
               <div className={styles.twoCol}>
                 <Dropdown
                   value={
-                    timeRange === 'PT24H' ? 'Last 24 hours' : timeRange === 'P7D' ? 'Last 7 days' : 'Last 30 days'
+                    timeRange === 'PT24H'
+                      ? 'Last 24 hours'
+                      : timeRange === 'P7D'
+                        ? 'Last 7 days'
+                        : timeRange === 'P30D'
+                          ? 'Last 30 days'
+                          : timeRange === 'P60D'
+                            ? 'Last 60 days'
+                            : timeRange === 'P90D'
+                              ? 'Last 90 days'
+                              : timeRange === 'P365D'
+                                ? 'Last year'
+                                : 'Forever'
                   }
                   onOptionSelect={(_, data) => setTimeRange(data.optionValue as TimeRange)}
                 >
                   <Option value="PT24H">Last 24 hours</Option>
                   <Option value="P7D">Last 7 days</Option>
                   <Option value="P30D">Last 30 days</Option>
+                  <Option value="P60D">Last 60 days</Option>
+                  <Option value="P90D">Last 90 days</Option>
+                  <Option value="P365D">Last year</Option>
+                  <Option value="FOREVER">Forever</Option>
                 </Dropdown>
                 <Switch
                   checked={autoRefresh}
@@ -485,20 +506,6 @@ export function Portal() {
               <Text weight="semibold">
                 Invocations {activeApp ? <span style={{ color: '#605e5c', fontWeight: 400 }}>— {activeApp.name}</span> : null}
               </Text>
-              <div className={styles.statusSummary}>
-                <div className={styles.summaryBox}>
-                  <Text size={200} className={styles.smallMeta}>
-                    Success count
-                  </Text>
-                  <Text weight="semibold">{successCount}</Text>
-                </div>
-                <div className={styles.summaryBox}>
-                  <Text size={200} className={styles.smallMeta}>
-                    Error count
-                  </Text>
-                  <Text weight="semibold">{errorCount}</Text>
-                </div>
-              </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
                 <div style={{ flex: 1 }}>
                   <Text size={200} className={styles.smallMeta}>
@@ -578,6 +585,7 @@ export function Portal() {
                 operationId={selectedOperationId}
                 loading={!!loading.details}
                 rows={details}
+                invocation={selectedInvocation}
                 onRefresh={() => {
                   if (selectedOperationId) void loadInvocationDetails(selectedOperationId)
                 }}
