@@ -62,8 +62,8 @@ const useStyles = makeStyles({
   },
   closeButton: {
     position: 'absolute',
-    top: '8px',
-    right: '8px',
+    top: '-20px',
+    right: '-20px',
     zIndex: 1,
   },
   dialogContent: {
