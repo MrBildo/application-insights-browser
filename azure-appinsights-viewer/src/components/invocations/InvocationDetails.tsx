@@ -16,6 +16,7 @@ import {
   Text,
   makeStyles,
 } from '@fluentui/react-components'
+import { Dismiss24Regular } from '@fluentui/react-icons'
 import { useState } from 'react'
 
 const useStyles = makeStyles({
@@ -33,22 +34,48 @@ const useStyles = makeStyles({
   clickableRow: { cursor: 'pointer', ':hover': { backgroundColor: '#f3f2f1' } },
   dialogSurface: {
     resize: 'both',
-    overflow: 'auto',
+    overflow: 'hidden',
     minWidth: '640px',
     minHeight: '420px',
     maxWidth: '92vw',
     maxHeight: '92vh',
-    backgroundColor: '#111111',
-    color: '#f5f5f5',
+    display: 'flex',
   },
+  dialogBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    minHeight: 0,
+  },
+  dialogHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: '12px',
+  },
+  dialogContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+  },
+  dialogLayout: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px', flex: 1, minHeight: 0 },
+  metaGrid: { display: 'grid', gap: '10px' },
+  fullMessageSection: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 },
   fullMessageArea: {
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-    backgroundColor: '#0f0f10',
-    color: '#f5f5f5',
-    border: '1px solid #2b2b2d',
+    flex: 1,
+    minHeight: 0,
+    '& textarea': {
+      fontFamily:
+        'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      backgroundColor: '#0f0f10',
+      color: '#f5f5f5',
+      border: '1px solid #2b2b2d',
+      lineHeight: '1.35',
+      height: '100%',
+      minHeight: 0,
+    },
   },
-  darkLabel: { color: '#c8c6c4' },
-  darkText: { color: '#f5f5f5' },
 })
 
 type DetailRow = {
@@ -174,59 +201,66 @@ export function InvocationDetails(props: {
 
       <Dialog open={selectedIdx !== null} onOpenChange={(_, data) => (!data.open ? setSelectedIdx(null) : null)}>
         <DialogSurface className={styles.dialogSurface}>
-          <DialogBody>
-            <DialogTitle>{props.operationId}</DialogTitle>
-            <DialogContent>
-              <div style={{ display: 'grid', gap: 10, marginTop: 4 }}>
-                <div>
-                  <Text size={200} className={styles.darkLabel} block>
-                    Time
-                  </Text>
-                  <Text block className={styles.darkText}>{selectedRow?.timestamp ? new Date(String(selectedRow.timestamp)).toLocaleString() : ''}</Text>
+          <DialogBody className={styles.dialogBody}>
+            <div className={styles.dialogHeader}>
+              <DialogTitle>{props.operationId}</DialogTitle>
+              <Button
+                appearance="subtle"
+                icon={<Dismiss24Regular />}
+                aria-label="Close"
+                onClick={() => setSelectedIdx(null)}
+              />
+            </div>
+            <DialogContent className={styles.dialogContent}>
+              <div className={styles.dialogLayout}>
+                <div className={styles.metaGrid}>
+                  <div>
+                    <Text size={200} block>
+                      Time
+                    </Text>
+                    <Text block>{selectedRow?.timestamp ? new Date(String(selectedRow.timestamp)).toLocaleString() : ''}</Text>
+                  </div>
+                  <div>
+                    <Text size={200} block>
+                      Result
+                    </Text>
+                    <Text block>
+                      {props.invocation ? (props.invocation.success ? 'Success' : 'Failure') : ''}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size={200} block>
+                      Duration (ms)
+                    </Text>
+                    <Text block>{approxDeltaMs === null ? '' : Math.round(approxDeltaMs)}</Text>
+                  </div>
+                  <div>
+                    <Text size={200} block>
+                      Log level
+                    </Text>
+                    <Text block>{toStringSafe(selectedRow?.loglevel)}</Text>
+                  </div>
+                  <div>
+                    <Text size={200} block>
+                      Item type
+                    </Text>
+                    <Text block>{toStringSafe(selectedRow?.itemType)}</Text>
+                  </div>
                 </div>
-                <div>
-                  <Text size={200} className={styles.darkLabel} block>
-                    Result
-                  </Text>
-                  <Text block className={styles.darkText}>
-                    {props.invocation ? (props.invocation.success ? 'Success' : 'Failure') : ''}
-                  </Text>
-                </div>
-                <div>
-                  <Text size={200} className={styles.darkLabel} block>
-                    Duration (ms)
-                  </Text>
-                  <Text block className={styles.darkText}>{approxDeltaMs === null ? '' : Math.round(approxDeltaMs)}</Text>
-                </div>
-                <div>
-                  <Text size={200} className={styles.darkLabel} block>
-                    Log level
-                  </Text>
-                  <Text block className={styles.darkText}>{toStringSafe(selectedRow?.loglevel)}</Text>
-                </div>
-                <div>
-                  <Text size={200} className={styles.darkLabel} block>
-                    Item type
-                  </Text>
-                  <Text block className={styles.darkText}>{toStringSafe(selectedRow?.itemType)}</Text>
-                </div>
-                <div>
-                  <Text size={200} className={styles.darkLabel} block>
+
+                <div className={styles.fullMessageSection}>
+                  <Text size={200} block>
                     Full message
                   </Text>
                   <Textarea
                     readOnly
-                    resize="vertical"
+                    resize="none"
                     value={toStringSafe(selectedRow?.message)}
                     className={styles.fullMessageArea}
-                    style={{ width: '100%', minHeight: 180 }}
                   />
                 </div>
               </div>
             </DialogContent>
-            <Button appearance="primary" style={{ marginTop: 12 }} onClick={() => setSelectedIdx(null)}>
-              Close
-            </Button>
           </DialogBody>
         </DialogSurface>
       </Dialog>
